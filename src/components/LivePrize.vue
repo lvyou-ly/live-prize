@@ -1,12 +1,13 @@
 <template>
   <div class="live-prize">
+    <canvas id="prize-canvas" :width="canvasWidth" :height="canvasHeight"></canvas>
     <img
       :src="iconList[activeIcon]"
       alt
       :style="{'width': `${iconWidth}px`, 'height': `${iconHeight}px`}"
+      class="icon"
       @click="start"
     />
-    <canvas id="prize-canvas" :width="canvasWidth" :height="canvasHeight"></canvas>
   </div>
 </template>
 <script>
@@ -71,14 +72,13 @@ export default {
         let p = new Promise((resolve) => {
           const image = new Image();
           image.src = this.iconList[i];
-          image.onload = image.onerror = resolve.bind(null, image);
+          image.onload = resolve.bind(null, image);
           promiseAll.push(image);
         });
       }
       Promise.all(promiseAll)
         .then((imageList) => {
           this.privateIconList = imageList.filter((item) => item && item.width);
-          console.log("privateIconList", this.privateIconList);
           if (this.privateIconList.length === 0) {
             throw new Error("all the images load fail");
           }
@@ -91,16 +91,16 @@ export default {
       if (this.privateIconList.length === 0) {
         return null;
       }
-      // 计算缩放
+      // 计算缩放，可根据需求随意设置缩放比例
       const basicScale = [0.6, 0.8, 1.2][this.getRandom(0, 2)];
-      // currentTime 是当前时间占总时间比例
+      // currentTime 是当前时间占缩放动画总时间的比例
       const getScale = (currentTime) => {
         if (currentTime >= this.scaleTime) {
           return basicScale;
         }
         return (currentTime / this.scaleTime).toFixed(2) * basicScale;
       };
-      // 计算偏移
+      // 从图片列表中随机抽取一张
       const image = this.privateIconList[
         Math.floor(this.getRandom(0, this.privateIconList.length - 1))
 			];
@@ -111,27 +111,26 @@ export default {
 				if (currentTime < this.scaleTime) {
 					imageWidth = Math.floor((currentTime / this.scaleTime) * this.imageWidth);
 					imageHeight = Math.floor((currentTime / this.scaleTime) * this.imageHeight);
-					
 				}
 				return {
 					imageWidth,
 					imageHeight,
 				}
-			};
+      };
+      // 利用sin曲线作为图片基础轨迹
       const angle = this.getRandom(2, 10);
+      // 乘系数，让图片摆动起来
 			const ratio = this.getRandom(10, 30) * (this.getRandom(10, 20) > 15 ? 1 : -1);
-			const x = Math.floor(this.canvasWidth / 2 + image.width / 2);
-			let basicX = [x, x + 10, x - 10, x + 15, x - 15][Math.floor(this.getRandom(0, 4))];
-			console.log('basicX', basicX);
+			const basicX = Math.floor(this.canvasWidth / 2 + ([1, -1][this.getRandom(0,1).toFixed()]) * image.width / 2);
       const getOriginX = (currentTime) => {
         if (currentTime < this.scaleTime) {
-          // 放大期间不尽兴左右摇摆
+          // 放大期间不进行左右摇摆
           return basicX;
-				}
+        }
         return basicX + ratio * Math.sin(angle * (currentTime - this.scaleTime));
       };
       const getOriginY = (currentTime) => {
-        return (
+      return (
           (1 - currentTime) * (this.canvasHeight - Math.floor(image.height))
         );
       };
@@ -164,7 +163,6 @@ export default {
     scan() {
       this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
       this.context.fillStyle = "#fff";
-      this.context.fillRect(0, 0, 200, 400);
       let index = 0;
       if (this.renderList.length) {
         this.requestFrame(this.scan.bind(this));
@@ -184,7 +182,6 @@ export default {
             ).toFixed(2)
           )
         ) {
-          console.log("true");
           this.renderList.splice(index, 1);
         } else {
           index++;
@@ -192,7 +189,6 @@ export default {
       }
     },
     start() {
-      console.log("start");
       const render = this.createRender();
       const duration = Math.floor(this.getRandom(1500, 3000));
       this.renderList.push({
@@ -209,7 +205,7 @@ export default {
       return Math.random() * (end - start) + start;
     },
     requestFrame(callback) {
-      setTimeout(callback, 1000 / 60);
+      window.requestAnimationFrame(callback);
     },
   },
 };
@@ -218,5 +214,12 @@ export default {
 .prize-canvas {
   width: 200px;
   height: 400px;
+}
+.icon {
+  display: block;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 460px;
 }
 </style>
